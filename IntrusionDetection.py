@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def detectSSHIntrusions(dataframe):
+def detectSSHIntrusions(dataframe, return_var):
     
     ### Dictonary to hold all the intrusion info
     intrusion_dict = {}    
@@ -17,6 +17,8 @@ def detectSSHIntrusions(dataframe):
     #Sort the dataframe in chronological order
     scansorted = scan.sort_values(['first','dstaddr'])
     BFsorted = BF.sort_values(['first','dstaddr'])
+
+    print(scansorted)
 
     #Get values for how many times a certain IP address appears as a source
     srccount = scansorted['srcaddr'].value_counts()
@@ -171,6 +173,10 @@ def detectSSHIntrusions(dataframe):
     scan_d = {}
     bf_attackers = list(set(BFattackerlist))
     scan_attackers = list(set(scanattackerlist))
+    new_netflowData = dataframe
+    addr_list = list(new_netflowData['srcaddr'])
+    new_netflowData['bf_attkr'] = 0
+    new_netflowData['scan_attkr'] = 0
     
     for n in range (0,BFLength):
         BF_d[bf_attackers[n]] = {}
@@ -181,7 +187,13 @@ def detectSSHIntrusions(dataframe):
         
         intrusion_dict['Brute Force Attackers'] = BF_d
         
-    for m in range (0, ScanLength):    
+        #print(addr_list.index(bf_attackers[n]), 'yes\n')
+            
+    #print(new_netflowData.index[n])
+    
+    #print(bf_attackers)
+        
+    for m in range (0, ScanLength):  
         scan_d[scan_attackers[m]] = {}
         dicdf = ssh[ssh.srcaddr == scan_attackers[m]]
         scan_d[scan_attackers[m]]['Organization'] = dicdf.iloc[0]['src_org']
@@ -190,8 +202,17 @@ def detectSSHIntrusions(dataframe):
         
         intrusion_dict['Scan Attackers'] = scan_d
         
-    return intrusion_dict
-     
+    #print(scan_attackers)
+    
+    if return_var == 0:
+        return intrusion_dict
+        
+    if return_var == 1:
+        return new_netflowData
+        
+    else:
+        print("Incorrect usage of function 'detectSSHIntrusions'", "\n")
+        return -1 
      
 ### Loads example data frame into detection function, in this case it is an annotated csv file
     
@@ -200,28 +221,30 @@ targetfile = '/home/zero/GoogleDrive/School/Graduate_Work/Thesis/Code/netflow_ex
 netflowData = pd.read_csv(targetfile)
 
 ### Input to function is a Pandas data frame
-dictionary = detectSSHIntrusions(netflowData)
-netflowData['bf_attkr'] = 0
-netflowData['scan_attkr'] = 0
+### Usage: detectSSHIntrusions(name_of_dataframe, 0 to return intrusion dictionary 1 to return new dataframe)
+foo = detectSSHIntrusions(netflowData, 0)
+#netflowData['bf_attkr'] = 0
+#netflowData['scan_attkr'] = 0
 
 ### Define two vars to itereate over the keys and the values in dictonary, also print a '\n' to look cleaner
-for i, j in dictionary.items():
-    print(i,':',', '.join(j),'\n')
+#for i, j in dictionary.items():
+#    print(i,':',', '.join(j),'\n')
     
-### Adds columns to dataframe denoting with a 1 or 0 if the flow contains a brute force/ scan attacker    
-for i, j in dictionary['Brute Force Attackers'].items():
-    #print(i,'\n')
-    if i in list(netflowData.srcaddr):
-        ### Finds indices where a matching value to the bf_attkr was found
-        indices = (netflowData['srcaddr'] == i) * 1
-        netflowData['bf_attkr'] = pd.DataFrame(indices) 
-        
-for i, j in dictionary['Scan Attackers'].items():
-    if i in list(netflowData.srcaddr):
-        ### Finds indices where a matching value to the bf_attkr was found
-        indices = (netflowData['srcaddr'] == i) * 1
-        netflowData['scan_attkr'] = pd.DataFrame(indices) 
+#### Adds columns to dataframe denoting with a 1 or 0 if the flow contains a brute force/ scan attacker    
+#for i, j in dictionary['Brute Force Attackers'].items():
+#    #print(i,'\n')
+#    if i in list(netflowData.srcaddr):
+#        ### Finds indices where a matching value to the bf_attkr was found
+#        indices = (netflowData['srcaddr'] == i) * 1
+#        netflowData['bf_attkr'] = pd.DataFrame(indices) 
+#        
+#for i, j in dictionary['Scan Attackers'].items():
+#    if i in list(netflowData.srcaddr):
+#        ### Finds indices where a matching value to the bf_attkr was found
+#        indices = (netflowData['srcaddr'] == i) * 1
+#        netflowData['scan_attkr'] = pd.DataFrame(indices) 
 
         
 #print(list(dictionary.keys()),'\n')
 #print(list(dictionary['Brute Force Attackers'].keys()),'\n')
+        
