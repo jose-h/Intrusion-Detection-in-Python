@@ -195,7 +195,7 @@ def detectSSHIntrusions(dataframe):
      
 ### Loads example data frame into detection function, in this case it is an annotated csv file
     
-targetfile = '/home/zero/Downloads/netflow_examples/uky_201702151500_15m_ann.csv'
+targetfile = 'C:/Users/Owner/Desktop/Definitely Not Research Stuff/netflow_examples/uky_201702151500_15m_ann.csv'
 
 netflowData = pd.read_csv(targetfile)
 
@@ -204,7 +204,8 @@ dictionary = detectSSHIntrusions(netflowData)
 
 ### Define two vars to itereate over the keys and the values in dictonary, also print a '\n' to look cleaner
 for i, j in dictionary.items():
-    print(i,j,'\n')
+    print(i,':',', '.join(j),'\n')
+
     
 #print(list(dictionary.keys()),'\n')
 #print(dictionary['Brute Force Attackers'],'\n')
