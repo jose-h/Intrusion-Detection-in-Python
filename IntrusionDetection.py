@@ -163,20 +163,47 @@ def detectSSHIntrusions(dataframe):
         #print("Possible compromised IP addresses by IP address",BFattackerlist[z],":")
         #print('\n'.join(NewCompList))
         
-        return intrusion_dict
+        
+    n = 0
+    m = 0
+    ScanLength = len(scanattackerlist)
+    BF_d = {}
+    scan_d = {}
+    bf_attackers = list(set(BFattackerlist))
+    scan_attackers = list(set(scanattackerlist))
+    
+    for n in range (0,BFLength):
+        BF_d[bf_attackers[n]] = {}
+        dicdf = ssh[ssh.srcaddr == bf_attackers[n]]
+        BF_d[bf_attackers[n]]['Organization'] = dicdf.iloc[0]['src_org']
+        BF_d[bf_attackers[n]]['City'] = dicdf.iloc[0]['src_city']
+        BF_d[bf_attackers[n]]['Country'] = dicdf.iloc[0]['src_country']
+        
+        intrusion_dict['Brute Force Attackers'] = BF_d
+        
+    for m in range (0, ScanLength):    
+        scan_d[scan_attackers[m]] = {}
+        dicdf = ssh[ssh.srcaddr == scan_attackers[m]]
+        scan_d[scan_attackers[m]]['Organization'] = dicdf.iloc[0]['src_org']
+        scan_d[scan_attackers[m]]['City'] = dicdf.iloc[0]['src_city']
+        scan_d[scan_attackers[m]]['Country'] = dicdf.iloc[0]['src_country']
+        
+        intrusion_dict['Scan Attackers'] = scan_d
+        
+    return intrusion_dict
      
      
 ### Loads example data frame into detection function, in this case it is an annotated csv file
     
-targetfile = "C:/Users/Lulu/Google Drive/School/Graduate_Work/Thesis/Code/uky_201702151500_15m_ann.csv"
+targetfile = '/home/zero/Downloads/netflow_examples/uky_201702151500_15m_ann.csv'
 
 netflowData = pd.read_csv(targetfile)
 
 ### Input to function is a Pandas data frame
-out = detectSSHIntrusions(netflowData)
+dictionary = detectSSHIntrusions(netflowData)
 
 ### Define two vars to itereate over the keys and the values in dictonary, also print a '\n' to look cleaner
-for i, j in out.items():
+for i, j in dictionary.items():
     print(i,j,'\n')
     
 #print(list(dictionary.keys()),'\n')
