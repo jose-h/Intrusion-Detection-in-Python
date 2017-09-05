@@ -54,7 +54,9 @@ def detectSSHIntrusions(dataframe, return_var):
     #Calculate if an IP address appears more than X amount of times
     ScanYN = dstcount + srccount >= 200
     BFYN = BFdstcount + srccount  >= 20
-
+    
+    print(ScanYN)    
+    
     #List IP addresses that show up more than X amount of times to determine wether to scan or not
     ScanYN = ScanYN[(ScanYN.values) == True]
     BFYN = BFYN[(BFYN.values) == True]
@@ -153,7 +155,7 @@ def detectSSHIntrusions(dataframe, return_var):
         compDF = compDF[((compDF.dPkts < 8) | (compDF.dPkts > 14)) & (compDF.duration > 4000)]
         CompList = np.unique(compDF[['srcaddr','dstaddr']])
         NewCompList = CompList.tolist()
-        if BruteForceAttackers in NewCompList:          # Added this bit in, else it would fail if BFA list was empty
+        if BruteForceAttackers in NewCompList:          # Added this bit in, else it would fail
             NewCompList.remove(BruteForceAttackers[z])
         NewCompList.sort
 
@@ -180,9 +182,9 @@ def detectSSHIntrusions(dataframe, return_var):
     for n in range (0,BFLength):
         BF_d[bf_attackers[n]] = {}
         dicdf = ssh[ssh.srcaddr == bf_attackers[n]]
-        BF_d[bf_attackers[n]]['Organization'] = dicdf.iloc[0]['src_org']
-        BF_d[bf_attackers[n]]['City'] = dicdf.iloc[0]['src_city']
-        BF_d[bf_attackers[n]]['Country'] = dicdf.iloc[0]['src_country']
+#        BF_d[bf_attackers[n]]['Organization'] = dicdf.iloc[0]['src_org']
+#        BF_d[bf_attackers[n]]['City'] = dicdf.iloc[0]['src_city']
+#        BF_d[bf_attackers[n]]['Country'] = dicdf.iloc[0]['src_country']
 
         intrusion_dict['Brute Force Attackers'] = BF_d
 
@@ -195,9 +197,9 @@ def detectSSHIntrusions(dataframe, return_var):
     for m in range (0, ScanLength):
         scan_d[scan_attackers[m]] = {}
         dicdf = ssh[ssh.srcaddr == scan_attackers[m]]
-        scan_d[scan_attackers[m]]['Organization'] = dicdf.iloc[0]['src_org']
-        scan_d[scan_attackers[m]]['City'] = dicdf.iloc[0]['src_city']
-        scan_d[scan_attackers[m]]['Country'] = dicdf.iloc[0]['src_country']
+#       scan_d[scan_attackers[m]]['Organization'] = dicdf.iloc[0]['src_org']
+#        scan_d[scan_attackers[m]]['City'] = dicdf.iloc[0]['src_city']
+#        scan_d[scan_attackers[m]]['Country'] = dicdf.iloc[0]['src_country']
 
         intrusion_dict['Scan Attackers'] = scan_d
 
@@ -214,9 +216,8 @@ def detectSSHIntrusions(dataframe, return_var):
         return -1
 
 ### Loads example data frame into detection function, in this case it is an annotated csv file
-
-targetfile = '/home/zero/GoogleDrive/School/Graduate_Work/Thesis/Code/netflow_examples/uky_201702151500_15m_ann.csv'
-
+### Change hydra_8_hos... to nmap_8_hos... to benchmark nmap
+targetfile = '/home/zero/GoogleDrive/School/Graduate_Work/Thesis/hydra_8_hosts_ann.csv'
 netflowData = pd.read_csv(targetfile)
 
 ### Input to function is a Pandas data frame
