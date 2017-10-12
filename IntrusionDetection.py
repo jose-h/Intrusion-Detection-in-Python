@@ -5,7 +5,7 @@ An intrusion detection function capable of detecting scanning, brute force, and 
 and annotating flow records as such.
 
 Authors:  Jose A. Hernandez & Christopher Mendoza
-Version: 2.1
+Version: 2.1.1
 Date:    September 5, 2017
 
 List of features to add & bugs to fix:
@@ -36,48 +36,26 @@ def detectSSHIntrusions(dataframe, return_var):
     scansorted = scan.sort_values(['first','dstaddr'])
     totaldst = list(set(scansorted.dstaddr))
     #print(totaldst)
+    #print(len(totaldst))
     
     reorder = BF.sort_values(['srcaddr','dstaddr','first'])
     BFsorted = reorder.reset_index(drop = True)
 
     ### Scan % Rule ###
-    scaniplist = []
+    scanattackerlist = []
     for x in range(0,len(totaldst)):
         # make temp flow data where IP is dst 
         tempNFD = scansorted[(scansorted.dstaddr == totaldst[x])]
         # find number of IPs testing IP connects to
         tempsrc_list = len(list(set(tempNFD.srcaddr)))
-        #print(tempsrc_list)        
+        #print(tempsrc_list) 
+        # if number of IPs it connects to exceeds 33% add it to scan ip list
         if (tempsrc_list / len(totaldst)) >= Fraction(1,3):
-            scaniplist.append(totaldst[x])
+            scanattackerlist.append(totaldst[x])
             #print(scaniplist)
 
     ### Add entry to dictionary
-    intrusion_dict['Potential Scan Attackers'] = scaniplist
-
-    #print("IP Addresses that meet initial scan criteria:")
-    #print('\n'.join(scaniplist))
-
-    IPNum = len(scaniplist)
-    #Go through the list and if there are enough connections, suspect a port scan attack
-
-    ### Scan Algortihm ###
-    x=0
-    scanattackerlist = []
-    for x in range (0,IPNum):
-        # This gives me the flow data where the scanner is the dst 
-        newNFD = scansorted[(scansorted.dstaddr == scaniplist[x])]
-        maxtime = newNFD['first'].max()
-        tmin = newNFD['first'].min()
-        while (tmin <= maxtime):
-            tDF = newNFD[(newNFD['first'] >= (tmin)) & (newNFD['first'] <= (tmin + 60000))]
-            tmin = tmin + 60000
-            #print("Number of connections between",(tmin-60000),"and",tmin,":",len(tDF))
-            if (len(tDF) >= 200):
-                if scaniplist[x] not in scanattackerlist:
-                    scanattackerlist.append(scaniplist[x])
-
-    #print(scanattackerlist)
+    intrusion_dict['Scan Attackers'] = scanattackerlist
 
     ### Brute-force Algorithm ###
     LoginGraceTime = 200000
@@ -109,7 +87,6 @@ def detectSSHIntrusions(dataframe, return_var):
             compromisedIPs.append(w)
 
     ### Add entry to dictionary
-    intrusion_dict['Scan Attackers'] = scanattackerlist
     intrusion_dict['Brute Force Attackers'] = BruteForceAttackers
 
     ### Potentially Compromised IPs ###
@@ -185,7 +162,7 @@ def detectSSHIntrusions(dataframe, return_var):
 
 ### Loads example data frame into detection function, in this case it is an annotated csv file
 
-targetfile = '/home/zero/GoogleDrive/School/Graduate_Work/Thesis/Code/netflow_examples/uky_201702151200_15m_ann.csv'
+targetfile = '/home/zero/GoogleDrive/School/Graduate_Work/Thesis/Code/netflow_examples/uky_201702150900_15m_ann.csv'
 
 netflowData = pd.read_csv(targetfile)
 
