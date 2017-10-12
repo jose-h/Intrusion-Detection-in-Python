@@ -1,5 +1,21 @@
+"""
+Intrusion Detection function for AMIS 
+
+An intrusion detection function capable of detecting scanning, brute force, and compromised IP addresses 
+and annotating flow records as such.
+
+Authors:  Jose A. Hernandez & Christopher Mendoza
+Version: 2.1
+Date:    September 5, 2017
+
+List of features to add & bugs to fix:
+1. Improved(alternate) scanning algorithm
+2. Fix annotating algorithm
+"""
+
 import numpy as np
 import pandas as pd
+from fractions import Fraction
 
 def detectSSHIntrusions(dataframe, return_var):
 
@@ -7,110 +23,63 @@ def detectSSHIntrusions(dataframe, return_var):
     intrusion_dict = {}
 
     ssh = dataframe
+
     #Sort out only SSH connections
     ssh = dataframe[(dataframe.dstport==22)]
     port22 = dataframe[(dataframe.dstport==22) | (dataframe.srcport==22)]
-
+    
     #Set rules for scan phase detection
-    scan = port22[(port22.dPkts <= 2)]
+    scan = port22[(port22.dPkts <= 4)]
     BF = ssh[(ssh.dPkts >= 11) & (ssh.dPkts <= 51)]
 
     #Sort the dataframe in chronological order
     scansorted = scan.sort_values(['first','dstaddr'])
+    totaldst = list(set(scansorted.dstaddr))
+    #print(totaldst)
+    
     reorder = BF.sort_values(['srcaddr','dstaddr','first'])
     BFsorted = reorder.reset_index(drop = True)
 
-    #print(scansorted)
-
-    #Get values for how many times a certain IP address appears as a source
-    srccount = scansorted['srcaddr'].value_counts()
-    BFsrccount = reorder['srcaddr'].value_counts()
-
-    #print("Source Scan Value Counts:")
-    #print(srccount)
-    #print("")
-    #print("Source BF Value Counts:")
-    #print(BFsrccount)
-    #print("")
-
-    #Get values for how many times a certain IP address appears as a destination
-    dstcount = scansorted['dstaddr'].value_counts()
-    BFdstcount = reorder['dstaddr'].value_counts()
-    #print("Destination Scan Value Counts:")
-    #print(dstcount)
-    #print("")
-    #print("Destination BF Value Counts:")
-    #print(BFdstcount)
-    #print("")
-
-    #How many times X amount of dPkts show up
-    DPcount = scansorted.dPkts.value_counts()
-    DPBFCount = BFsorted.dPkts.value_counts()
-    #print(DPcount)
-    #print("")
-    #print(DPBFCount)
-    #print("")
-
-    #Calculate if an IP address appears more than X amount of times
-    ScanYN = dstcount + srccount >= 200
-    BFYN = BFdstcount + srccount  >= 20
-
-    #List IP addresses that show up more than X amount of times to determine wether to scan or not
-    ScanYN = ScanYN[(ScanYN.values) == True]
-    BFYN = BFYN[(BFYN.values) == True]
-
-    #List all the IP addresses that meet a criteria
-    scaniplist = list(ScanYN.index)
+    ### Scan % Rule ###
+    scaniplist = []
+    for x in range(0,len(totaldst)):
+        # make temp flow data where IP is dst 
+        tempNFD = scansorted[(scansorted.dstaddr == totaldst[x])]
+        # find number of IPs testing IP connects to
+        tempsrc_list = len(list(set(tempNFD.srcaddr)))
+        #print(tempsrc_list)        
+        if (tempsrc_list / len(totaldst)) >= Fraction(1,3):
+            scaniplist.append(totaldst[x])
+            #print(scaniplist)
 
     ### Add entry to dictionary
     intrusion_dict['Potential Scan Attackers'] = scaniplist
 
-    #print("")
     #print("IP Addresses that meet initial scan criteria:")
     #print('\n'.join(scaniplist))
-    #print("")
-    BFiplist = list(BFYN.index)
 
-    ### Add entry to dictionary
-    intrusion_dict['Potential Brute Force Attackers'] = BFiplist
-
-    #print("IP Addresses that meet initial BF criteria:")
-    #print('\n'.join(BFiplist))
-    #print("")
     IPNum = len(scaniplist)
-    BFIPNum = len(BFiplist)
+    #Go through the list and if there are enough connections, suspect a port scan attack
 
-    #Go through the list and find out if there are enough connections to suspect a port scan attack
-
+    ### Scan Algortihm ###
     x=0
     scanattackerlist = []
-
     for x in range (0,IPNum):
-        newNFD = scansorted[(scansorted.srcaddr == scaniplist[x]) | (scansorted.dstaddr == scaniplist[x])]
+        # This gives me the flow data where the scanner is the dst 
+        newNFD = scansorted[(scansorted.dstaddr == scaniplist[x])]
         maxtime = newNFD['first'].max()
-        mintime = newNFD['first'].min()
-        totaltime = (maxtime - mintime)/1000
-        average = len(newNFD)/totaltime
-        #print("")
-        #print("Scan attack data for",scaniplist[x],":")
-        #print("")
-        #print("Maxtime:",maxtime,"Mintime:",mintime,"Total Time(s):",totaltime,"Average(Connections per second):",average)
-        #print("")
-        #print("Total amount of connections made by IP Address",scaniplist[x],":",len(newNFD))
-        #print("")
-        tmin = mintime
+        tmin = newNFD['first'].min()
         while (tmin <= maxtime):
             tDF = newNFD[(newNFD['first'] >= (tmin)) & (newNFD['first'] <= (tmin + 60000))]
             tmin = tmin + 60000
-          #  print("Number of connections between",(tmin-60000),"and",tmin,":",len(tDF))
+            #print("Number of connections between",(tmin-60000),"and",tmin,":",len(tDF))
             if (len(tDF) >= 200):
                 if scaniplist[x] not in scanattackerlist:
                     scanattackerlist.append(scaniplist[x])
 
     #print(scanattackerlist)
-    #BruteForce Algorithm
 
-    #Set Variables
+    ### Brute-force Algorithm ###
     LoginGraceTime = 200000
     #baseline = BFsorted['dPkts'].value_counts().idmax()
 
@@ -143,8 +112,7 @@ def detectSSHIntrusions(dataframe, return_var):
     intrusion_dict['Scan Attackers'] = scanattackerlist
     intrusion_dict['Brute Force Attackers'] = BruteForceAttackers
 
-    #Die off phase with potential compromised IP addresses
-
+    ### Potentially Compromised IPs ###
     z = 0
     CompList = list()
     BFLength = len(BruteForceAttackers)
@@ -160,7 +128,6 @@ def detectSSHIntrusions(dataframe, return_var):
         ### Add entry to dictionary
         intrusion_dict['Potentially Compromised IPs'] = NewCompList
 
-        #print("")
         #print("Possible compromised IP addresses by IP address",BFattackerlist[z],":")
         #print('\n'.join(NewCompList))
 
@@ -209,13 +176,16 @@ def detectSSHIntrusions(dataframe, return_var):
     if return_var == 1:
         return new_netflowData
 
+    #For testing
+    if return_var == 2:
+        return tempNFD
     else:
         print("Incorrect usage of function 'detectSSHIntrusions'", "\n")
         return -1
 
 ### Loads example data frame into detection function, in this case it is an annotated csv file
 
-targetfile = '/home/zero/GoogleDrive/School/Graduate_Work/Thesis/Code/netflow_examples/uky_201702151500_15m_ann.csv'
+targetfile = '/home/zero/GoogleDrive/School/Graduate_Work/Thesis/Code/netflow_examples/uky_201702151200_15m_ann.csv'
 
 netflowData = pd.read_csv(targetfile)
 
